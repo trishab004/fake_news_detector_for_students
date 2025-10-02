@@ -173,14 +173,18 @@ Provide the label and confidence as JSON if possible. Article:
 
 
 # -------------------------
+# Initialize detector in session (fix)
+# -------------------------
+if "detector" not in st.session_state:
+    st.session_state.detector = FakeNewsDetector()
+if "analysis_history" not in st.session_state:
+    st.session_state.analysis_history = []
+
+
+# -------------------------
 # Streamlit pages
 # -------------------------
 def main():
-    if 'detector' not in st.session_state:
-        st.session_state.detector = FakeNewsDetector()
-    if 'analysis_history' not in st.session_state:
-        st.session_state.analysis_history = []
-
     with st.sidebar:
         st.title("🎓 Student Fake News Detector")
         st.markdown("---")
