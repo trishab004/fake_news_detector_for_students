@@ -19,11 +19,12 @@ st.set_page_config(
 )
 
 # Download NLTK data with error handling
-try:
-    nltk.data.find('tokenizers/punkt')
-except LookupError:
-    with st.spinner("Downloading NLP data..."):
-        nltk.download('punkt')
+for resource in ["punkt", "punkt_tab"]:
+    try:
+        nltk.data.find(f"tokenizers/{resource}")
+    except LookupError:
+        with st.spinner(f"Downloading {resource}..."):
+            nltk.download(resource)
 
 # Custom CSS
 st.markdown("""
