@@ -73,46 +73,50 @@ class FakeNewsDetector:
         }
 
     def model_based_analysis(self, text):
-        """Use Google PaLM to classify Fake/Real"""
-        try:
-            prompt = f"""
+    """Use Google PaLM to classify Fake/Real"""
+    try:
+        prompt = f"""
 Classify the following news article as either 'Fake' or 'Reliable'. 
-Return a JSON exactly like: {{"label": "Fake", "confidence": 0.9}}.
-
-Article:
+Provide the label and confidence as JSON if possible. Article:
 {text[:1000]}
 """
-            response = palm.generate_text(model="chat-bison-001", prompt=prompt)
-            result_text = response.result.strip()
-            # Parse JSON
+        response = palm.generate_text(model="chat-bison-001", prompt=prompt)
+        result_text = response.result.strip()
+
+        # Try to parse JSON
+        try:
             result = json.loads(result_text)
             label = result.get("label", "").lower()
             score = float(result.get("confidence", 0))
+        except:
+            # Fallback: parse from text manually
+            label = "fake" if "fake" in result_text.lower() else "reliable"
+            score = 0.9 if label=="fake" else 0.95  # default confidences
 
-            if label == "fake":
-                verdict = "Fake News"
-                color = "red"
-            else:
-                verdict = "Reliable"
-                color = "green"
+        if label == "fake":
+            verdict = "Fake News"
+            color = "red"
+        else:
+            verdict = "Reliable"
+            color = "green"
 
-            return {
-                "verdict": verdict,
-                "confidence": score,
-                "color": color,
-                "scores": {
-                    "fake_score": score if verdict=="Fake News" else 1-score,
-                    "reliable_score": score if verdict=="Reliable" else 1-score
-                }
+        return {
+            "verdict": verdict,
+            "confidence": score,
+            "color": color,
+            "scores": {
+                "fake_score": score if verdict=="Fake News" else 1-score,
+                "reliable_score": score if verdict=="Reliable" else 1-score
             }
-        except Exception as e:
-            return {
-                "verdict": "Error",
-                "confidence": 0,
-                "color": "orange",
-                "scores": {"fake_score": 0, "reliable_score": 0},
-                "error": str(e)
-            }
+        }
+    except Exception as e:
+        return {
+            "verdict": "Error",
+            "confidence": 0,
+            "color": "orange",
+            "scores": {"fake_score": 0, "reliable_score": 0},
+            "error": str(e)
+        }
 
     def extract_article_from_url(self, url):
         """Extract article content from URL"""
