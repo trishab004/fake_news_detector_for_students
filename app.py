@@ -7,8 +7,11 @@ from bs4 import BeautifulSoup
 import re
 import nltk
 from datetime import datetime
-import google.generativeai as palm
 import json
+
+# ML imports
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.naive_bayes import MultinomialNB
 
 # -------------------------
 # Streamlit page config
@@ -19,11 +22,6 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
-
-# -------------------------
-# Configure Google PaLM API
-# -------------------------
-palm.configure(api_key=st.secrets["GOOGLE_API_KEY"])
 
 # -------------------------
 # Download NLTK data
@@ -56,6 +54,29 @@ class FakeNewsDetector:
     def __init__(self):
         self.loaded = True
 
+        # Small training dataset (expand as needed)
+        train_texts = [
+            "Breaking! Shocking miracle cure discovered",
+            "Secret government conspiracy revealed",
+            "Experts say climate change is real",
+            "Research indicates vaccine is safe",
+            "NASA confirms water on Mars",
+            "Scandal leaked shocking fraud exposed",
+            "According to university study data shows",
+            "Peer-reviewed research confirms safety",
+            "Government officially announced policy",
+            "Fraud alert shocking news click here"
+        ]
+        train_labels = [
+            "fake","fake","reliable","reliable","reliable",
+            "fake","reliable","reliable","reliable","fake"
+        ]
+
+        self.vectorizer = CountVectorizer(stop_words="english")
+        X_train = self.vectorizer.fit_transform(train_texts)
+        self.clf = MultinomialNB()
+        self.clf.fit(X_train, train_labels)
+
     def analyze_text(self, text):
         """Analyze text for fake news indicators"""
         if len(text) < 20:
@@ -74,43 +95,26 @@ class FakeNewsDetector:
         }
 
     def model_based_analysis(self, text):
-        """Use Google PaLM to classify Fake/Real"""
+        """Offline ML-based Fake/Real detection"""
         try:
-            prompt = f"""
-Classify the following news article as either 'Fake' or 'Reliable'. 
-Provide the label and confidence as JSON if possible. Article:
-{text[:1000]}
-"""
-            response = palm.generate_text(model="models/text-bison-001", prompt=prompt)
-            result_text = response.result.strip()
+            X_test = self.vectorizer.transform([text])
+            pred = self.clf.predict(X_test)[0]
+            prob = self.clf.predict_proba(X_test)[0]
 
-            # DEBUG: show what the model actually said
-            st.write("🔎 Raw model output:", result_text)
-
-            # Try to parse JSON
-            try:
-                result = json.loads(result_text)
-                label = result.get("label", "").lower()
-                score = float(result.get("confidence", 0))
-            except:
-                # Fallback: parse from text manually
-                label = "fake" if "fake" in result_text.lower() else "reliable"
-                score = 0.9 if label == "fake" else 0.95
-
-            if label == "fake":
-                verdict = "Fake News"
-                color = "red"
+            if pred == "fake":
+                verdict, color = "Fake News", "red"
+                confidence = prob[self.clf.classes_.tolist().index("fake")]
             else:
-                verdict = "Reliable"
-                color = "green"
+                verdict, color = "Reliable", "green"
+                confidence = prob[self.clf.classes_.tolist().index("reliable")]
 
             return {
                 "verdict": verdict,
-                "confidence": score,
+                "confidence": float(confidence),
                 "color": color,
                 "scores": {
-                    "fake_score": score if verdict == "Fake News" else 1 - score,
-                    "reliable_score": score if verdict == "Reliable" else 1 - score
+                    "fake_score": float(prob[self.clf.classes_.tolist().index("fake")]),
+                    "reliable_score": float(prob[self.clf.classes_.tolist().index("reliable")])
                 }
             }
         except Exception as e:
@@ -155,14 +159,12 @@ Provide the label and confidence as JSON if possible. Article:
         except Exception as e:
             return f"(Summary unavailable: {e})"
 
-
-
     def extract_features(self, text):
         words = nltk.word_tokenize(text.lower())
         sentences = nltk.sent_tokenize(text)
-        sensational_words = ['shocking','miracle','secret','breaking','urgent']
+        sensational_words = ['shocking','miracle','secret','breaking','urgent','fraud','scandal']
         sensational_count = sum(1 for word in words if any(sw in word for sw in sensational_words))
-        reliable_indicators = ['according to','study shows','research indicates','experts say']
+        reliable_indicators = ['according','research','study','experts','official','confirmed']
         reliable_count = sum(1 for word in words if any(rw in word for rw in reliable_indicators))
         return {
             'word_count': len(words),
@@ -175,7 +177,7 @@ Provide the label and confidence as JSON if possible. Article:
 
 
 # -------------------------
-# Initialize detector in session (fix)
+# Initialize detector in session
 # -------------------------
 if "detector" not in st.session_state:
     st.session_state.detector = FakeNewsDetector()
