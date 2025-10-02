@@ -28,7 +28,7 @@ palm.configure(api_key=st.secrets["GOOGLE_API_KEY"])
 # -------------------------
 # Download NLTK data
 # -------------------------
-for resource in ["punkt"]:
+for resource in ["punkt", "punkt_tab"]:
     try:
         nltk.data.find(f"tokenizers/{resource}")
     except LookupError:
@@ -146,14 +146,15 @@ Provide the label and confidence as JSON if possible. Article:
             return {'title': 'Error', 'content':'', 'success': False, 'error': str(e)}
 
     def generate_summary(self, text):
-        """Extractive summary"""
-        if len(text) < 100: 
-            return "Text too short for meaningful summary"
-        try:
-            sentences = nltk.sent_tokenize(text)
-            return ' '.join(sentences[:3]) if len(sentences) > 3 else ' '.join(sentences)
-        except:
-            return text[:200] + "..."
+    """Extractive summary"""
+    if not text or len(text) < 100: 
+        return "Text too short for meaningful summary"
+    try:
+        sentences = nltk.sent_tokenize(text)
+        return ' '.join(sentences[:3]) if len(sentences) > 3 else ' '.join(sentences)
+    except Exception as e:
+        return f"(Summary unavailable: {e})"
+
 
     def extract_features(self, text):
         words = nltk.word_tokenize(text.lower())
