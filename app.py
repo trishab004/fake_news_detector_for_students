@@ -9,6 +9,7 @@ from bs4 import BeautifulSoup
 import re
 import nltk
 import time
+from transformers import pipeline
 
 # Page configuration
 st.set_page_config(
@@ -59,7 +60,68 @@ st.markdown("""
 class FakeNewsDetector:
     def __init__(self):
         self.loaded = True
-    
+        # Load Hugging Face fake-news classifier
+        with st.spinner("Loading AI model..."):
+            self.classifier = pipeline(
+                "text-classification",
+                model="mrm8488/bert-tiny-finetuned-fake-news",
+                device=-1  # CPU, change to 0 if GPU available
+            )
+
+    def analyze_text(self, text):
+        """Analyze text for fake news indicators"""
+        if len(text) < 20:
+            return {'error': 'Text too short for analysis'}
+        
+        # Generate summary
+        summary = self.generate_summary(text)
+        
+        # Predict credibility using model
+        analysis = self.model_based_analysis(text)
+        
+        # Extract basic features
+        features = self.extract_features(text)
+        
+        return {
+            'summary': summary,
+            'analysis': analysis,
+            'features': features,
+            'word_count': len(text.split()),
+            'char_count': len(text)
+        }
+
+    def model_based_analysis(self, text):
+        """Use Hugging Face model to predict Fake/Real"""
+        try:
+            result = self.classifier(text[:512])[0]  # limit to 512 tokens
+            label = result['label']
+            score = result['score']
+            
+            if label.lower() in ["fake"]:
+                verdict = "Fake News"
+                color = "red"
+            else:
+                verdict = "Reliable"
+                color = "green"
+            
+            return {
+                'verdict': verdict,
+                'confidence': score,
+                'color': color,
+                'scores': {
+                    'fake_score': score if verdict=="Fake News" else 1-score,
+                    'reliable_score': score if verdict=="Reliable" else 1-score
+                }
+            }
+        except Exception as e:
+            return {
+                'verdict': "Error",
+                'confidence': 0,
+                'color': "orange",
+                'scores': {'fake_score': 0, 'reliable_score': 0},
+                'error': str(e)
+            }
+
     def extract_article_from_url(self, url):
         """Extract article content from URL"""
         try:
@@ -98,28 +160,6 @@ class FakeNewsDetector:
                 'success': False,
                 'error': str(e)
             }
-    
-    def analyze_text(self, text):
-        """Analyze text for fake news indicators"""
-        if len(text) < 50:
-            return {'error': 'Text too short for analysis'}
-        
-        # Generate summary
-        summary = self.generate_summary(text)
-        
-        # Analyze credibility
-        analysis = self.credibility_analysis(text)
-        
-        # Extract features
-        features = self.extract_features(text)
-        
-        return {
-            'summary': summary,
-            'analysis': analysis,
-            'features': features,
-            'word_count': len(text.split()),
-            'char_count': len(text)
-        }
     
     def generate_summary(self, text):
         """Generate article summary using extractive method"""
@@ -160,64 +200,7 @@ class FakeNewsDetector:
         
         return features
     
-    def credibility_analysis(self, text):
-        """Analyze text credibility using rule-based approach"""
-        text_lower = text.lower()
-        
-        # Rule-based scoring
-        fake_indicators = [
-            'miracle cure', 'secret they don\'t want you to know', 'conspiracy',
-            'cover-up', 'big pharma', 'mainstream media hiding'
-        ]
-        
-        reliable_indicators = [
-            'according to study', 'research shows', 'experts say', 'official report',
-            'peer-reviewed', 'clinical trial', 'scientific study'
-        ]
-        
-        # Count indicators
-        fake_score = sum(3 for indicator in fake_indicators if indicator in text_lower)
-        reliable_score = sum(3 for indicator in reliable_indicators if indicator in text_lower)
-        
-        # Linguistic feature scoring
-        features = self.extract_features(text)
-        
-        # Penalize excessive punctuation
-        if features['exclamation_count'] > features['sentence_count']:
-            fake_score += 2
-        
-        # Calculate final scores
-        total_indicators = fake_score + reliable_score
-        if total_indicators > 0:
-            fake_ratio = fake_score / total_indicators
-            reliable_ratio = reliable_score / total_indicators
-        else:
-            fake_ratio = reliable_ratio = 0.5
-        
-        # Determine verdict
-        if fake_ratio > 0.6:
-            verdict = "Fake News"
-            confidence = fake_ratio
-            color = "red"
-        elif reliable_ratio > 0.6:
-            verdict = "Reliable"
-            confidence = reliable_ratio
-            color = "green"
-        else:
-            verdict = "Borderline/Uncertain"
-            confidence = max(fake_ratio, reliable_ratio)
-            color = "orange"
-        
-        return {
-            'verdict': verdict,
-            'confidence': confidence,
-            'color': color,
-            'scores': {
-                'fake_score': fake_ratio,
-                'reliable_score': reliable_ratio,
-            }
-        }
-
+    
 def main():
     # Initialize detector
     if 'detector' not in st.session_state:
