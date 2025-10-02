@@ -72,7 +72,7 @@ class FakeNewsDetector:
             'char_count': len(text)
         }
 
-    def model_based_analysis(self, text):
+def model_based_analysis(self, text):
     """Use Google PaLM to classify Fake/Real"""
     try:
         prompt = f"""
