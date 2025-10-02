@@ -273,7 +273,11 @@ def render_home_page():
         """)
     
     with col2:
-        st.image("🔍", width=200)
+        # Instead of st.image("🔍"), use styled HTML
+        st.markdown(
+            "<div style='text-align: center; font-size: 120px;'>🔍</div>", 
+            unsafe_allow_html=True
+        )
         st.markdown("### Quick Stats")
         st.metric("Fake News Spread", "85%")
         st.metric("Student Exposure", "72%")
