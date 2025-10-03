@@ -17,6 +17,10 @@ This backend app empowers learners by providing **real-time news credibility ana
 On the website, you’ll find project details and a **“Launch App”** button that redirects here (the Streamlit app) for real-time analysis.  
 - **Streamlit direct link** : [Backend Streamlit App](https://fakenewsdetectorforstudents-hudcvbcqbn2tno8rxisceu.streamlit.app/)
 
+
+<img src="images/website_bqr.png" alt="Scan to visit website" width="350"/>
+
+
 ---
 
 ## ⚡ Features
