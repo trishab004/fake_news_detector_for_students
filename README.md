@@ -18,7 +18,7 @@ On the website, you’ll find project details and a **“Launch App”** button 
 - **Streamlit direct link** : [Backend Streamlit App](https://fakenewsdetectorforstudents-hudcvbcqbn2tno8rxisceu.streamlit.app/)
 
 
-<img src="images/website_bqr.png" alt="Scan to visit website" width="350"/>
+<img src="images/imageswebsite_bqr.png" alt="Scan to visit website" width="350"/>
 
 
 ---
